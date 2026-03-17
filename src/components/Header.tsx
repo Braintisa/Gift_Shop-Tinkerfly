@@ -140,9 +140,7 @@ const Header = () => {
           <a href={whatsappDirect} target="_blank" rel="noopener noreferrer" className="btn-whatsapp text-sm py-2.5 px-6">
             Order on WhatsApp
           </a>
-          <a href="/admin/login" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors duration-300">
-            <Lock size={12} /> Admin
-          </a>
+
         </nav>
 
         <button 
@@ -204,9 +202,7 @@ const Header = () => {
               <a href={whatsappDirect} target="_blank" rel="noopener noreferrer" className="btn-whatsapp text-sm py-3 mt-2">
                 Order on WhatsApp
               </a>
-              <a href="/admin/login" className="flex items-center gap-1.5 py-3 px-4 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <Lock size={12} /> Admin Login
-              </a>
+
             </nav>
           </motion.div>
         )}
