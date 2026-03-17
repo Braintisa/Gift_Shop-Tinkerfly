@@ -10,6 +10,14 @@ export function useAdminAuth() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if we are using the mock bypass
+    if (localStorage.getItem("mock_admin_bypass") === "true") {
+      setUser({ id: "mock-id", email: "admin@tinkerfly.lk" } as User);
+      setIsAdmin(true);
+      setLoading(false);
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
         setUser(null);
@@ -50,6 +58,11 @@ export function useAdminAuth() {
   }, [navigate]);
 
   const signOut = async () => {
+    if (localStorage.getItem("mock_admin_bypass") === "true") {
+      localStorage.removeItem("mock_admin_bypass");
+      navigate("/admin/login");
+      return;
+    }
     await supabase.auth.signOut();
     navigate("/admin/login");
   };

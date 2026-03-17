@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,21 +63,18 @@ export default function SiteSettingsManager() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase.from("site_settings").select("*");
-      const map: Record<string, string> = {};
-      (data as SettingRow[] ?? []).forEach((r) => { map[r.setting_key] = r.setting_value; });
-      setSettings(map);
-      setLoading(false);
-    };
-    load();
+    const raw = localStorage.getItem("tinkerfly_site_settings");
+    if (raw) {
+      setSettings(JSON.parse(raw));
+    }
+    setLoading(false);
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    for (const [key, value] of Object.entries(settings)) {
-      await supabase.from("site_settings").update({ setting_value: value }).eq("setting_key", key);
-    }
+    // Artificial delay to mimic save
+    await new Promise(r => setTimeout(r, 500));
+    localStorage.setItem("tinkerfly_site_settings", JSON.stringify(settings));
     setSaving(false);
     toast({ title: "Settings saved successfully" });
   };

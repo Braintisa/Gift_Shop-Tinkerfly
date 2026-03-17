@@ -36,8 +36,13 @@ export default function SocialGalleryManager() {
   const { toast } = useToast();
 
   const fetchData = async () => {
-    const { data } = await supabase.from("social_gallery").select("*").order("sort_order");
-    setItems((data as unknown as GalleryItem[]) ?? []);
+    const raw = localStorage.getItem("tinkerfly_social_gallery");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      setItems(parsed.sort((a: GalleryItem, b: GalleryItem) => a.sort_order - b.sort_order));
+    } else {
+      setItems([]);
+    }
     setLoading(false);
   };
 
@@ -59,37 +64,61 @@ export default function SocialGalleryManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const path = `gallery/${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("product-images").upload(path, file);
-    if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); setUploading(false); return; }
-    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-    setForm(f => ({ ...f, image_url: data.publicUrl }));
-    setUploading(false);
+
+    const formData = new FormData();
+    formData.append("key", "d780a2a4ef3db8699ca4d25a35c8d49a");
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("https://api.imgbb.com/1/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setForm(f => ({ ...f, image_url: data.data.url }));
+      } else {
+        toast({ title: "Upload failed", description: data.error?.message, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Upload error", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async () => {
+    // Read latest from storage to avoid stale state
+    const sStr = localStorage.getItem("tinkerfly_social_gallery");
+    const currentItems = sStr ? JSON.parse(sStr) : [];
+
     if (editing) {
-      const { error } = await supabase.from("social_gallery").update(form).eq("id", editing.id);
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      const index = currentItems.findIndex((i: any) => i.id === editing.id);
+      if (index > -1) {
+        currentItems[index] = { ...currentItems[index], ...form };
+      }
       toast({ title: "Gallery item updated" });
     } else {
-      const { error } = await supabase.from("social_gallery").insert(form);
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      currentItems.push({ id: "gallery-" + Date.now(), ...form });
       toast({ title: "Gallery item created" });
     }
+
+    localStorage.setItem("tinkerfly_social_gallery", JSON.stringify(currentItems));
     setDialogOpen(false);
     fetchData();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this gallery item?")) return;
-    await supabase.from("social_gallery").delete().eq("id", id);
+    const currentItems = items.filter(i => i.id !== id);
+    localStorage.setItem("tinkerfly_social_gallery", JSON.stringify(currentItems));
     toast({ title: "Gallery item deleted" });
     fetchData();
   };
 
   const toggleActive = async (g: GalleryItem) => {
-    await supabase.from("social_gallery").update({ is_active: !g.is_active }).eq("id", g.id);
+    const currentItems = items.map(i => i.id === g.id ? { ...i, is_active: !i.is_active } : i);
+    localStorage.setItem("tinkerfly_social_gallery", JSON.stringify(currentItems));
     fetchData();
   };
 

@@ -41,7 +41,7 @@ const CustomCursor = () => {
 
     const onHoverIn = (e: Event) => {
       const target = e.target as HTMLElement;
-      if (target.closest("a, button, [role='button'], .card-product, input, textarea, select")) {
+      if (target.closest("a, button, [role='button'], .card-product, .cursor-pointer, input, textarea, select")) {
         setHovering(true);
       }
     };

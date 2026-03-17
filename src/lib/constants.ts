@@ -7,21 +7,21 @@ export const FACEBOOK_URL = "https://www.facebook.com/share/1ZmfzmjiVG/";
 export const INSTAGRAM_URL = "https://www.instagram.com/tinkerfly_?igsh=MTlxejA5MGtldmZ4Nw==";
 export const TIKTOK_URL = "https://www.tiktok.com/@tinkerfly__?_r=1&_t=ZS-948RviYPT4H";
 
-export const getWhatsAppOrderLink = (productName: string, price: number, categoryName?: string) => {
+export const getWhatsAppOrderLink = (productName: string, price: number, categoryName?: string, productUrl?: string) => {
   const message = `Hello, I want to order this bouquet:
 
 Product: ${productName}
-Price: Rs. ${price.toLocaleString()}${categoryName ? `\nCategory: ${categoryName}` : ""}
+Price: Rs. ${price.toLocaleString()}${categoryName ? `\nCategory: ${categoryName}` : ""}${productUrl ? `\nProduct Link: ${productUrl}` : ""}
 
 Please share availability and payment details.`;
   return `https://wa.me/94722507196?text=${encodeURIComponent(message)}`;
 };
 
-export const getWhatsAppOrderLinkWithNumber = (whatsappNumber: string, productName: string, price: number, categoryName?: string) => {
+export const getWhatsAppOrderLinkWithNumber = (whatsappNumber: string, productName: string, price: number, categoryName?: string, productUrl?: string) => {
   const message = `Hello, I want to order this bouquet:
 
 Product: ${productName}
-Price: Rs. ${price.toLocaleString()}${categoryName ? `\nCategory: ${categoryName}` : ""}
+Price: Rs. ${price.toLocaleString()}${categoryName ? `\nCategory: ${categoryName}` : ""}${productUrl ? `\nProduct Link: ${productUrl}` : ""}
 
 Please share availability and payment details.`;
   return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;

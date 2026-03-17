@@ -25,6 +25,15 @@ const SocialFeed = () => {
   const { data: galleryItems } = useQuery({
     queryKey: ["public-gallery"],
     queryFn: async () => {
+      // Local Storage JSON Fetch first
+      const raw = localStorage.getItem("tinkerfly_social_gallery");
+      if (raw) {
+        let parsed = JSON.parse(raw);
+        parsed = parsed.filter((i: any) => i.is_active !== false).sort((a: any, b: any) => a.sort_order - b.sort_order);
+        if (parsed.length > 0) return parsed;
+      }
+
+      // Supabase Fallback
       const { data } = await supabase
         .from("social_gallery")
         .select("*")

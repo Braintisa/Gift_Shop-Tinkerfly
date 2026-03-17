@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,8 +38,13 @@ export default function TestimonialsManager() {
   const { toast } = useToast();
 
   const fetchData = async () => {
-    const { data } = await supabase.from("testimonials").select("*").order("sort_order");
-    setItems((data as unknown as Testimonial[]) ?? []);
+    const raw = localStorage.getItem("tinkerfly_testimonials");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      setItems(parsed.sort((a: Testimonial, b: Testimonial) => a.sort_order - b.sort_order));
+    } else {
+      setItems([]);
+    }
     setLoading(false);
   };
 
@@ -66,29 +70,33 @@ export default function TestimonialsManager() {
   };
 
   const handleSave = async () => {
+    const currentItems = [...items];
     if (editing) {
-      const { error } = await supabase.from("testimonials").update(form).eq("id", editing.id);
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      const index = currentItems.findIndex(i => i.id === editing.id);
+      if (index > -1) {
+        currentItems[index] = { ...currentItems[index], ...form };
+      }
       toast({ title: "Testimonial updated" });
     } else {
-      const { error } = await supabase.from("testimonials").insert(form);
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      currentItems.push({ id: "testi-" + Date.now(), ...form });
       toast({ title: "Testimonial created" });
     }
+    localStorage.setItem("tinkerfly_testimonials", JSON.stringify(currentItems));
     setDialogOpen(false);
     fetchData();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this testimonial?")) return;
-    const { error } = await supabase.from("testimonials").delete().eq("id", id);
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    const currentItems = items.filter(i => i.id !== id);
+    localStorage.setItem("tinkerfly_testimonials", JSON.stringify(currentItems));
     toast({ title: "Testimonial deleted" });
     fetchData();
   };
 
   const toggleActive = async (t: Testimonial) => {
-    await supabase.from("testimonials").update({ is_active: !t.is_active }).eq("id", t.id);
+    const currentItems = items.map(i => i.id === t.id ? { ...i, is_active: !i.is_active } : i);
+    localStorage.setItem("tinkerfly_testimonials", JSON.stringify(currentItems));
     fetchData();
   };
 

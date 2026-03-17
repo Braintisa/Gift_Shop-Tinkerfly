@@ -233,6 +233,7 @@
   /* Primary CTA  — #A8DB6F → #2F7D5B premium gradient */
   .btn-whatsapp {
     @apply btn-brand-base;
+    cursor: pointer;
     background: linear-gradient(140deg, hsl(89 61% 65%), hsl(155 45% 34%));
     box-shadow:
       0 4px 16px hsl(155 45% 34% / 0.18),
@@ -250,6 +251,7 @@
   /* Secondary CTA — softer, lighter version of same palette */
   .btn-primary-brand {
     @apply btn-brand-base;
+    cursor: pointer;
     background: linear-gradient(140deg, hsl(93 71% 76% / 0.85), hsl(89 61% 65%));
     color: hsl(155 50% 14%);
     box-shadow:
@@ -270,6 +272,7 @@
   /* Order button on product cards — same gradient as primary, compact */
   .btn-order {
     @apply inline-flex items-center justify-center gap-2 font-semibold transition-all duration-300 relative overflow-hidden;
+    cursor: pointer;
     background: linear-gradient(140deg, hsl(89 61% 65%), hsl(155 45% 34%));
     color: white;
     border-radius: 12px;

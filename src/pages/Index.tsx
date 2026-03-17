@@ -23,6 +23,42 @@ const Index = () => {
   const { data: categories } = useQuery({
     queryKey: ["public-categories"],
     queryFn: async () => {
+      // Local Storage JSON Fetch first
+      const pStr = localStorage.getItem("tinkerfly_products");
+      const cStr = localStorage.getItem("tinkerfly_categories");
+      const iStr = localStorage.getItem("tinkerfly_product_images");
+
+      if (cStr && pStr) {
+        const cats = JSON.parse(cStr).filter((c: any) => c.is_active !== false).sort((a: any, b: any) => a.sort_order - b.sort_order);
+        const prods = JSON.parse(pStr).filter((p: any) => p.is_active !== false).sort((a: any, b: any) => a.sort_order - b.sort_order);
+        const imgs = iStr ? JSON.parse(iStr) : [];
+        if (cats.length > 0) {
+          const mapped: Category[] = cats.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            emoji: c.emoji || "",
+            description: c.description || "",
+            products: prods
+              .filter((p: any) => p.category_id === c.id)
+              .map((p: any) => {
+                const pImgs = imgs.filter((i: any) => i.product_id === p.id).sort((a: any, b: any) => a.sort_order - b.sort_order);
+                return {
+                  id: p.id,
+                  name: p.name,
+                  price: Number(p.price),
+                  description: p.description || "",
+                  badge: p.badge as any,
+                  image: pImgs[0]?.image_path || "",
+                  categoryName: c.name,
+                };
+              }),
+          }));
+          const filtered = mapped.filter((c) => c.products.length > 0);
+          if (filtered.length > 0) return filtered;
+        }
+      }
+
+      // Supabase Fallback
       const { data: cats } = await supabase
         .from("categories")
         .select("*")
@@ -62,6 +98,36 @@ const Index = () => {
   const { data: popularProducts } = useQuery({
     queryKey: ["popular-products"],
     queryFn: async () => {
+      // Local Storage JSON Fetch
+      const pStr = localStorage.getItem("tinkerfly_products");
+      const cStr = localStorage.getItem("tinkerfly_categories");
+      const iStr = localStorage.getItem("tinkerfly_product_images");
+
+      if (pStr && cStr) {
+        const cats = JSON.parse(cStr);
+        const prods = JSON.parse(pStr)
+          .filter((p: any) => p.is_active !== false && p.is_featured === true)
+          .sort((a: any, b: any) => a.sort_order - b.sort_order);
+        const imgs = iStr ? JSON.parse(iStr) : [];
+
+        if (prods.length > 0) {
+          return prods.map((p: any) => {
+            const pImgs = imgs.filter((i: any) => i.product_id === p.id).sort((a: any, b: any) => a.sort_order - b.sort_order);
+            const cat = cats.find((c: any) => c.id === p.category_id);
+            return {
+              id: p.id,
+              name: p.name,
+              price: Number(p.price),
+              description: p.description || "",
+              badge: p.badge as any,
+              image: pImgs[0]?.image_path || "",
+              categoryName: cat?.name || "",
+            } as Product;
+          });
+        }
+      }
+
+      // Supabase Fallback
       const { data } = await supabase
         .from("products")
         .select("*, product_images(*), categories!inner(name)")
@@ -90,24 +156,24 @@ const Index = () => {
     <div className="min-h-screen bg-background/80 relative">
       <AmbientMist />
       <div className="relative z-10">
-      <CustomCursor />
-      <Header />
-      <Hero />
+        <CustomCursor />
+        <Header />
+        <Hero />
 
-      <PopularSlider products={displayPopular} whatsappNumber={whatsappNumber} />
+        <PopularSlider products={displayPopular} whatsappNumber={whatsappNumber} />
 
-      <div id="collections">
-        {displayCategories.map((cat, i) => (
-          <CategorySection key={cat.id} category={cat} index={i} whatsappNumber={whatsappNumber} />
-        ))}
-      </div>
-      <WhyChoose />
-      <HowToOrder />
-      <AboutUs />
-      <SocialFeed />
-      <Testimonials />
-      <ContactFooter />
-      <WhatsAppFloat />
+        <div id="collections">
+          {displayCategories.map((cat, i) => (
+            <CategorySection key={cat.id} category={cat} index={i} whatsappNumber={whatsappNumber} />
+          ))}
+        </div>
+        <WhyChoose />
+        <HowToOrder />
+        <AboutUs />
+        <SocialFeed />
+        <Testimonials />
+        <ContactFooter />
+        <WhatsAppFloat />
       </div>
     </div>
   );

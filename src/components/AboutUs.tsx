@@ -15,29 +15,33 @@ const AboutUs = () => {
   return (
     <section id="about-us" className="py-28 section-cream relative">
       <div className="container mx-auto px-4 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-16 items-center max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center max-w-6xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, x: -40 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease }}
+            className="relative w-full"
           >
-            <div className="relative">
+            <div className="relative rounded-card overflow-hidden shadow-lg">
               <img
                 src={image}
                 alt="About Tinkerfly"
-                className="w-full rounded-card shadow-lg"
+                className="w-full h-auto object-cover"
                 loading="lazy"
               />
-              <div className="absolute -inset-4 rounded-card bg-gradient-to-br from-brand-mint/10 to-brand-gold-soft/10 -z-10 blur-2xl" />
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-mint/5 to-brand-gold-soft/5 pointer-events-none" />
             </div>
+            {/* Glow effect behind */}
+            <div className="absolute -inset-2 rounded-card bg-gradient-to-br from-brand-mint/20 to-brand-gold-soft/20 -z-10 blur-2xl opacity-60" />
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease }}
+            className="relative z-20"
           >
             <p className="text-sm font-medium tracking-[0.25em] uppercase text-brand-gold-muted mb-4">{title}</p>
             <h2 className="text-3xl sm:text-4xl font-display font-bold text-foreground mb-6 heading-accent">{heading}</h2>

@@ -19,6 +19,17 @@ export default function AdminLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Hardcoded JSON local fallback matching user bypass request
+    const MOCK_ADMIN_JSON = { username: "admin", password: "admin123" };
+    if (email === MOCK_ADMIN_JSON.username && password === MOCK_ADMIN_JSON.password) {
+      localStorage.setItem("mock_admin_bypass", "true");
+      toast({ title: "Welcome back", description: "Signed in successfully." });
+      navigate("/admin");
+      setLoading(false);
+      return;
+    }
+
     try {
       // Check if email is an approved admin email (bootstrap: if table is empty, allow any login attempt)
       const { data: allEmails, error: listError } = await supabase
@@ -80,8 +91,8 @@ export default function AdminLogin() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@tinkerfly.lk" required />
+              <Label htmlFor="email">Email or Username</Label>
+              <Input id="email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>

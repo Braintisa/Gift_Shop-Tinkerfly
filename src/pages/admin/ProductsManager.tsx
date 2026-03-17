@@ -47,14 +47,24 @@ export default function ProductsManager() {
   const { toast } = useToast();
 
   const fetchData = async () => {
-    const [p, c, i] = await Promise.all([
-      supabase.from("products").select("*").order("sort_order"),
-      supabase.from("categories").select("*").order("sort_order"),
-      supabase.from("product_images").select("*").order("sort_order"),
-    ]);
-    setProducts(p.data ?? []);
-    setCategories(c.data ?? []);
-    setProductImages(i.data ?? []);
+    // Read from localStorage json data instead of Supabase
+    const pStr = localStorage.getItem("tinkerfly_products");
+    const cStr = localStorage.getItem("tinkerfly_categories");
+    const iStr = localStorage.getItem("tinkerfly_product_images");
+
+    const p = pStr ? JSON.parse(pStr) : [];
+    let c = cStr ? JSON.parse(cStr) : [];
+    const i = iStr ? JSON.parse(iStr) : [];
+
+    // Bootstrap a default category if empty so we can create products without Supabase
+    if (c.length === 0) {
+      c = [{ id: "cat-1", name: "Default Category", sort_order: 0 }];
+      localStorage.setItem("tinkerfly_categories", JSON.stringify(c));
+    }
+
+    setProducts(p);
+    setCategories(c);
+    setProductImages(i);
     setLoading(false);
   };
 
@@ -86,16 +96,32 @@ export default function ProductsManager() {
     if (!files?.length) return;
     setUploading(true);
     const newUrls: string[] = [];
-    for (let idx = 0; idx < files.length; idx++) {
-      const file = files[idx];
-      const path = `products/${Date.now()}-${idx}-${file.name}`;
-      const { error } = await supabase.storage.from("product-images").upload(path, file);
-      if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); continue; }
-      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-      newUrls.push(data.publicUrl);
+    try {
+      for (let idx = 0; idx < files.length; idx++) {
+        const file = files[idx];
+        const formData = new FormData();
+        formData.append("key", "d780a2a4ef3db8699ca4d25a35c8d49a");
+        formData.append("image", file);
+
+        const res = await fetch("https://api.imgbb.com/1/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+          newUrls.push(data.data.url);
+        } else {
+          toast({ title: "Upload failed", description: data.error?.message, variant: "destructive" });
+        }
+      }
+      if (newUrls.length > 0) {
+        setPendingImages(prev => [...prev, ...newUrls]);
+      }
+    } catch (err: any) {
+      toast({ title: "Upload error", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
-    setPendingImages(prev => [...prev, ...newUrls]);
-    setUploading(false);
   };
 
   const removePendingImage = (url: string) => {
@@ -111,51 +137,97 @@ export default function ProductsManager() {
     };
     let productId = editing?.id;
 
+    const currentProds = [...products];
+
     if (editing) {
-      const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      const pIndex = currentProds.findIndex(p => p.id === editing.id);
+      if (pIndex > -1) {
+        currentProds[pIndex] = { ...currentProds[pIndex], ...payload } as Product;
+      }
     } else {
-      const { data, error } = await supabase.from("products").insert(payload).select("id").single();
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-      productId = data.id;
+      productId = "prod-" + Date.now();
+      currentProds.push({ id: productId, ...payload } as any);
     }
+
+    // Save to JSON storage
+    localStorage.setItem("tinkerfly_products", JSON.stringify(currentProds));
 
     // Sync images
     if (productId) {
-      await supabase.from("product_images").delete().eq("product_id", productId);
+      // Read latest images directly from storage to avoid stale state issues
+      const iStr = localStorage.getItem("tinkerfly_product_images");
+      const allImages = iStr ? JSON.parse(iStr) : [];
+      let currentImages = allImages.filter((img: any) => img.product_id !== productId);
+      
       if (pendingImages.length > 0) {
         const imageRows = pendingImages.map((url, idx) => ({
+          id: "img-" + Date.now() + "-" + idx,
           product_id: productId!,
           image_path: url,
           sort_order: idx,
+          created_at: new Date().toISOString(),
         }));
-        await supabase.from("product_images").insert(imageRows);
+        currentImages = [...currentImages, ...imageRows];
       }
+      localStorage.setItem("tinkerfly_product_images", JSON.stringify(currentImages));
     }
 
     toast({ title: editing ? "Product updated" : "Product created" });
     setDialogOpen(false);
-    fetchData();
+    fetchData(); // This will refresh the state from localStorage
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this product?")) return;
-    await supabase.from("product_images").delete().eq("product_id", id);
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    const newProds = products.filter(p => p.id !== id);
+    const newImgs = productImages.filter(img => img.product_id !== id);
+    localStorage.setItem("tinkerfly_products", JSON.stringify(newProds));
+    localStorage.setItem("tinkerfly_product_images", JSON.stringify(newImgs));
     toast({ title: "Product deleted" });
     fetchData();
   };
 
   const toggleFeatured = async (p: Product) => {
-    await supabase.from("products").update({ is_featured: !p.is_featured }).eq("id", p.id);
+    const newProds = products.map(prod => prod.id === p.id ? { ...prod, is_featured: !prod.is_featured } : prod);
+    localStorage.setItem("tinkerfly_products", JSON.stringify(newProds));
     fetchData();
   };
 
   const toggleActive = async (p: Product) => {
-    await supabase.from("products").update({ is_active: !p.is_active }).eq("id", p.id);
+    const newProds = products.map(prod => prod.id === p.id ? { ...prod, is_active: !prod.is_active } : prod);
+    localStorage.setItem("tinkerfly_products", JSON.stringify(newProds));
     fetchData();
   };
+
+  const handleExportJSON = () => {
+    const data = { products, categories, productImages };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "products-data.json";
+    a.click();
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.products) localStorage.setItem("tinkerfly_products", JSON.stringify(data.products));
+        if (data.categories) localStorage.setItem("tinkerfly_categories", JSON.stringify(data.categories));
+        if (data.productImages) localStorage.setItem("tinkerfly_product_images", JSON.stringify(data.productImages));
+        toast({ title: "JSON data imported successfully!" });
+        fetchData();
+      } catch (err: any) {
+        toast({ title: "Failed to parse JSON", description: err.message, variant: "destructive" });
+      }
+    };
+    reader.readAsText(file);
+  };
+
 
   const getCatName = (id: string) => categories.find((c) => c.id === id)?.name ?? "—";
 
@@ -172,10 +244,13 @@ export default function ProductsManager() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-display font-bold">Products</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Add Product</Button>
-          </DialogTrigger>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input type="file" accept=".json" onChange={handleImportJSON} className="w-auto h-9 text-sm p-1" />
+          <Button variant="outline" size="sm" onClick={handleExportJSON}>Export JSON</Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="h-4 w-4 mr-2" />Add Product</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? "Edit Product" : "New Product"}</DialogTitle></DialogHeader>
             <div className="space-y-4">
@@ -200,21 +275,27 @@ export default function ProductsManager() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={form.category_id} onValueChange={(v) => setForm(f => ({ ...f, category_id: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select value={form.category_id || undefined} onValueChange={(v) => setForm(f => ({ ...f, category_id: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select a Category..." /></SelectTrigger>
                     <SelectContent>
-                      {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {categories.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Badge</Label>
                   <Select value={form.badge} onValueChange={(v) => setForm(f => ({ ...f, badge: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select or type..." /></SelectTrigger>
                     <SelectContent>
                       {BADGE_OPTIONS.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <Input 
+                    placeholder="Or type a custom badge..." 
+                    value={form.badge === "none" ? "" : form.badge} 
+                    onChange={(e) => setForm(f => ({ ...f, badge: e.target.value || "none" }))} 
+                    className="mt-2 text-sm"
+                  />
                 </div>
               </div>
 
@@ -260,6 +341,7 @@ export default function ProductsManager() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
@@ -272,7 +354,7 @@ export default function ProductsManager() {
           <SelectTrigger className="w-48"><SelectValue placeholder="Category" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            {categories.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterActive} onValueChange={setFilterActive}>

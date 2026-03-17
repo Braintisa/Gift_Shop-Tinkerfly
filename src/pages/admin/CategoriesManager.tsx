@@ -24,8 +24,13 @@ export default function CategoriesManager() {
   const { toast } = useToast();
 
   const fetchCategories = async () => {
-    const { data } = await supabase.from("categories").select("*").order("sort_order");
-    setCategories(data ?? []);
+    const raw = localStorage.getItem("tinkerfly_categories");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      setCategories(parsed.sort((a: Category, b: Category) => a.sort_order - b.sort_order));
+    } else {
+      setCategories([]);
+    }
     setLoading(false);
   };
 
@@ -47,55 +52,108 @@ export default function CategoriesManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const path = `categories/${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("product-images").upload(path, file);
-    if (error) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-    } else {
-      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-      setForm((f) => ({ ...f, cover_image: urlData.publicUrl }));
+
+    const formData = new FormData();
+    formData.append("key", "d780a2a4ef3db8699ca4d25a35c8d49a");
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("https://api.imgbb.com/1/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setForm((f) => ({ ...f, cover_image: data.data.url }));
+      } else {
+        toast({ title: "Upload failed", description: data.error?.message, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Upload error", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleSave = async () => {
     const payload = { name: form.name, description: form.description || null, sort_order: form.sort_order, is_active: form.is_active, cover_image: form.cover_image || null };
+    const cStr = localStorage.getItem("tinkerfly_categories");
+    const currentCats = cStr ? JSON.parse(cStr) : [];
+
     if (editing) {
-      const { error } = await supabase.from("categories").update(payload).eq("id", editing.id);
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      const index = currentCats.findIndex((c: any) => c.id === editing.id);
+      if (index > -1) {
+        currentCats[index] = { ...currentCats[index], ...payload } as Category;
+      }
       toast({ title: "Category updated" });
     } else {
-      const { error } = await supabase.from("categories").insert(payload);
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      currentCats.push({ id: "cat-" + Date.now(), ...payload } as any);
       toast({ title: "Category created" });
     }
+
+    localStorage.setItem("tinkerfly_categories", JSON.stringify(currentCats));
     setDialogOpen(false);
     fetchCategories();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this category? All products in it will need reassignment.")) return;
-    const { error } = await supabase.from("categories").delete().eq("id", id);
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    const currentCats = categories.filter(c => c.id !== id);
+    localStorage.setItem("tinkerfly_categories", JSON.stringify(currentCats));
     toast({ title: "Category deleted" });
     fetchCategories();
   };
 
   const toggleActive = async (cat: Category) => {
-    await supabase.from("categories").update({ is_active: !cat.is_active }).eq("id", cat.id);
+    const currentCats = categories.map(c => c.id === cat.id ? { ...c, is_active: !c.is_active } : c);
+    localStorage.setItem("tinkerfly_categories", JSON.stringify(currentCats));
     fetchCategories();
+  };
+
+  const handleExportJSON = () => {
+    const data = { categories };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "categories-data.json";
+    a.click();
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.categories) {
+          localStorage.setItem("tinkerfly_categories", JSON.stringify(data.categories));
+        } else if (Array.isArray(data)) {
+          localStorage.setItem("tinkerfly_categories", JSON.stringify(data));
+        }
+        toast({ title: "JSON categories imported successfully!" });
+        fetchCategories();
+      } catch (err: any) {
+        toast({ title: "Failed to parse JSON", description: err.message, variant: "destructive" });
+      }
+    };
+    reader.readAsText(file);
   };
 
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-display font-bold">Categories</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Add Category</Button>
-          </DialogTrigger>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input type="file" accept=".json" onChange={handleImportJSON} className="w-auto h-9 text-sm p-1" />
+          <Button variant="outline" size="sm" onClick={handleExportJSON}>Export JSON</Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="h-4 w-4 mr-2" />Add Category</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>{editing ? "Edit Category" : "New Category"}</DialogTitle></DialogHeader>
             <div className="space-y-4">
@@ -128,6 +186,7 @@ export default function CategoriesManager() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
