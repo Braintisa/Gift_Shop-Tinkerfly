@@ -1,0 +1,1 @@
+ALTER TABLE public.admin_emails ADD COLUMN recovery_keyword text DEFAULT null;
