@@ -49,6 +49,7 @@ const Index = () => {
                   description: p.description || "",
                   badge: p.badge as any,
                   image: pImgs[0]?.image_path || "",
+                  images: pImgs.map((i: any) => i.image_path),
                   categoryName: c.name,
                 };
               }),
@@ -87,6 +88,7 @@ const Index = () => {
             description: p.description || "",
             badge: p.badge as any,
             image: p.product_images?.[0]?.image_path || "",
+            images: p.product_images?.map((i: any) => i.image_path) || [],
             categoryName: c.name,
           })),
       }));
@@ -121,6 +123,7 @@ const Index = () => {
               description: p.description || "",
               badge: p.badge as any,
               image: pImgs[0]?.image_path || "",
+              images: pImgs.map((i: any) => i.image_path),
               categoryName: cat?.name || "",
             } as Product;
           });
@@ -144,6 +147,7 @@ const Index = () => {
         description: p.description || "",
         badge: p.badge as any,
         image: p.product_images?.[0]?.image_path || "",
+        images: p.product_images?.map((i: any) => i.image_path) || [],
         categoryName: p.categories?.name || "",
       })) as Product[];
     },

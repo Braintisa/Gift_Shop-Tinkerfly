@@ -34,6 +34,7 @@ export interface Product {
   description: string;
   badge?: "Most Popular" | "Premium" | "Luxury";
   image: string;
+  images?: string[];
   categoryName?: string;
 }
 

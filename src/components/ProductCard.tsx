@@ -29,9 +29,15 @@ const ProductCard = ({ product, index, whatsappNumber }: ProductCardProps) => {
     ? getWhatsAppOrderLinkWithNumber(whatsappNumber, product.name, product.price, product.categoryName, productUrl)
     : getWhatsAppOrderLink(product.name, product.price, product.categoryName, productUrl);
 
-  const images = (product as any).images && (product as any).images.length > 0
-    ? (product as any).images as string[]
-    : [product.image || heroBouquet];
+  // Ensure images is always an array of valid strings
+  const rawImages = (product.images && product.images.length > 0)
+    ? product.images
+    : [product.image];
+  
+  // Filter out any empty strings and provide fallback
+  const images = rawImages.filter(img => typeof img === 'string' && img.trim() !== "").length > 0
+    ? rawImages.filter(img => typeof img === 'string' && img.trim() !== "")
+    : [heroBouquet];
 
   return (
     <>
@@ -48,7 +54,7 @@ const ProductCard = ({ product, index, whatsappNumber }: ProductCardProps) => {
         <div className="relative overflow-hidden aspect-[4/5]" style={{ borderRadius: "18px 18px 0 0" }}>
           <div className="absolute inset-0 bg-gradient-to-br from-brand-mint-light/20 via-background/60 to-brand-gold-light/20 z-0" />
           <img
-            src={product.image || heroBouquet}
+            src={images[0]}
             alt={product.name}
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05] relative z-10"

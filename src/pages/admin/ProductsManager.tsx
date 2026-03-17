@@ -395,7 +395,7 @@ export default function ProductsManager() {
                 return (
                   <TableRow key={p.id}>
                     <TableCell>
-                      {imgs.length > 0 ? (
+                      {imgs.length > 0 && imgs[0].image_path ? (
                         <img src={imgs[0].image_path} alt="" className="w-12 h-12 rounded-lg object-cover" />
                       ) : (
                         <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">

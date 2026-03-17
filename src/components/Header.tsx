@@ -23,6 +23,23 @@ const Header = () => {
   const { data: categories } = useQuery({
     queryKey: ["nav-categories"],
     queryFn: async () => {
+      // Local Storage check first
+      const cStr = localStorage.getItem("tinkerfly_categories");
+      const pStr = localStorage.getItem("tinkerfly_products");
+      
+      if (cStr && pStr) {
+        const cats = JSON.parse(cStr).filter((c: any) => c.is_active !== false);
+        const prods = JSON.parse(pStr).filter((p: any) => p.is_active !== false);
+        
+        // Only return categories that actually have active products
+        const activeCats = cats.filter((c: any) => 
+          prods.some((p: any) => p.category_id === c.id)
+        ).sort((a: any, b: any) => a.sort_order - b.sort_order);
+        
+        if (activeCats.length > 0) return activeCats;
+      }
+
+      // Supabase Fallback
       const { data } = await supabase
         .from("categories")
         .select("id, name")
