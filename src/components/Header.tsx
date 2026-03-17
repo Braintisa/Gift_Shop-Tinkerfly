@@ -16,7 +16,8 @@ const staticLinks = [
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collectionsOpen, setCollectionsOpen] = useState(false);
+  const [desktopCollectionsOpen, setDesktopCollectionsOpen] = useState(false);
+  const [mobileCollectionsOpen, setMobileCollectionsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: settings } = useSiteSettings();
 
@@ -62,7 +63,7 @@ const Header = () => {
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setCollectionsOpen(false);
+        setDesktopCollectionsOpen(false);
       }
     };
     document.addEventListener("click", onClick);
@@ -70,7 +71,8 @@ const Header = () => {
   }, []);
 
   const scrollToCategory = (name: string) => {
-    setCollectionsOpen(false);
+    setDesktopCollectionsOpen(false);
+    setMobileCollectionsOpen(false);
     setMobileOpen(false);
     const el = document.getElementById(`category-${name.replace(/\s+/g, "-").toLowerCase()}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -95,13 +97,13 @@ const Header = () => {
           {/* Collections Dropdown */}
           <div ref={dropdownRef} className="relative">
             <button
-              onClick={() => setCollectionsOpen(!collectionsOpen)}
+              onClick={() => setDesktopCollectionsOpen(!desktopCollectionsOpen)}
               className="nav-link text-sm font-medium text-foreground/80 hover:text-primary transition-colors duration-300 flex items-center gap-1"
             >
-              Collections <ChevronDown size={14} className={`transition-transform duration-200 ${collectionsOpen ? "rotate-180" : ""}`} />
+              Collections <ChevronDown size={14} className={`transition-transform duration-200 ${desktopCollectionsOpen ? "rotate-180" : ""}`} />
             </button>
             <AnimatePresence>
-              {collectionsOpen && (
+              {desktopCollectionsOpen && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -143,7 +145,13 @@ const Header = () => {
           </a>
         </nav>
 
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-foreground">
+        <button 
+          onClick={() => {
+            setMobileOpen(!mobileOpen);
+            setMobileCollectionsOpen(false); // Reset mobile collections when closing menu
+          }} 
+          className="md:hidden p-2 text-foreground"
+        >
           {mobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -162,13 +170,13 @@ const Header = () => {
               </a>
               <div>
                 <button
-                  onClick={() => setCollectionsOpen(!collectionsOpen)}
+                  onClick={() => setMobileCollectionsOpen(!mobileCollectionsOpen)}
                   className="w-full py-3 px-4 text-foreground/80 hover:text-primary hover:bg-secondary rounded-btn transition-colors flex items-center justify-between"
                 >
-                  Collections <ChevronDown size={14} className={`transition-transform ${collectionsOpen ? "rotate-180" : ""}`} />
+                  Collections <ChevronDown size={14} className={`transition-transform ${mobileCollectionsOpen ? "rotate-180" : ""}`} />
                 </button>
                 <AnimatePresence>
-                  {collectionsOpen && (
+                  {mobileCollectionsOpen && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
