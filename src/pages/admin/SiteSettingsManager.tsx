@@ -115,9 +115,20 @@ export default function SiteSettingsManager() {
     }
   };
 
-  const hero_image_1 = settings?.hero_image_1 || "/hero1.jpeg";
-  const hero_image_2 = settings?.hero_image_2 || "/hero2.jpeg";
+  /** ImgBB = public HTTPS URL; works on landing (unlike /uploads/... in Docker). */
+  const uploadImageToImgbb = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append("image", file);
+    const res = await fetch("/api/admin/imgbb-upload", { method: "POST", body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || "ImgBB upload failed");
+    const url = data?.url as string | undefined;
+    if (!url || typeof url !== "string") throw new Error("Invalid upload response");
+    return url.trim();
+  };
 
+  const hero_image_1 = settings?.hero_image_1?.trim() || "/hero1.jpeg";
+  const hero_image_2 = settings?.hero_image_2?.trim() || "/hero2.jpeg";
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 
   return (
@@ -170,8 +181,14 @@ export default function SiteSettingsManager() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label>Hero Image 1</Label>
-              <div className="rounded-card overflow-hidden border border-border/40 bg-card">
-                <img src={hero_image_1} alt="Hero 1 preview" className="w-full h-40 object-cover" />
+              <div className="rounded-card overflow-hidden border border-border/40 bg-card min-h-[160px] bg-muted/20">
+                <img
+                  key={hero_image_1}
+                  src={hero_image_1}
+                  alt="Hero 1 preview"
+                  className="w-full h-40 object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <div className="space-y-2">
                 <Input
@@ -184,17 +201,10 @@ export default function SiteSettingsManager() {
                     if (!file) return;
                     setHeroUploading((s) => ({ ...s, hero1: true }));
                     try {
-                      const fd = new FormData();
-                      fd.append("hero1", file);
-                      const res = await fetch("/api/admin/hero-images", { method: "POST", body: fd });
-                      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Upload failed");
-                      const data = await res.json();
-                      const url = data.hero_image_1 as string | undefined;
-                      if (url) {
-                        setSettings((s) => ({ ...s, hero_image_1: url }));
-                        await savePartial({ hero_image_1: url });
-                        toast({ title: "Hero Image 1 uploaded" });
-                      }
+                      const url = await uploadImageToImgbb(file);
+                      setSettings((s) => ({ ...s, hero_image_1: url }));
+                      await savePartial({ hero_image_1: url });
+                      toast({ title: "Hero Image 1 uploaded (public URL)" });
                     } catch (err: any) {
                       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
                     } finally {
@@ -204,13 +214,21 @@ export default function SiteSettingsManager() {
                   }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Used as About section fallback if `about_image` is empty.</p>
+              <p className="text-xs text-muted-foreground">
+                About fallback if `about_image` is empty; also used on the landing hero if Hero Image 2 is not set.
+              </p>
             </div>
 
             <div className="space-y-3">
               <Label>Hero Image 2</Label>
-              <div className="rounded-card overflow-hidden border border-border/40 bg-card">
-                <img src={hero_image_2} alt="Hero 2 preview" className="w-full h-40 object-cover" />
+              <div className="rounded-card overflow-hidden border border-border/40 bg-card min-h-[160px] bg-muted/20">
+                <img
+                  key={hero_image_2}
+                  src={hero_image_2}
+                  alt="Hero 2 preview"
+                  className="w-full h-40 object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <div className="space-y-2">
                 <Input
@@ -223,17 +241,10 @@ export default function SiteSettingsManager() {
                     if (!file) return;
                     setHeroUploading((s) => ({ ...s, hero2: true }));
                     try {
-                      const fd = new FormData();
-                      fd.append("hero2", file);
-                      const res = await fetch("/api/admin/hero-images", { method: "POST", body: fd });
-                      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Upload failed");
-                      const data = await res.json();
-                      const url = data.hero_image_2 as string | undefined;
-                      if (url) {
-                        setSettings((s) => ({ ...s, hero_image_2: url }));
-                        await savePartial({ hero_image_2: url });
-                        toast({ title: "Hero Image 2 uploaded" });
-                      }
+                      const url = await uploadImageToImgbb(file);
+                      setSettings((s) => ({ ...s, hero_image_2: url }));
+                      await savePartial({ hero_image_2: url });
+                      toast({ title: "Hero Image 2 uploaded (public URL)" });
                     } catch (err: any) {
                       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
                     } finally {
@@ -243,7 +254,9 @@ export default function SiteSettingsManager() {
                   }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Used in the landing hero section.</p>
+              <p className="text-xs text-muted-foreground">
+                Main landing hero (right). Uses ImgBB so the same URL works everywhere—re-upload if you still see the old local `/uploads/...` link.
+              </p>
             </div>
           </div>
 

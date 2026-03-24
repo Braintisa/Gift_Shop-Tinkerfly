@@ -1,19 +1,8 @@
-import dynamic from "next/dynamic";
-import type { Metadata } from "next";
+"use client";
 
-const App = dynamic(() => import("@/App"), { ssr: false });
+import App from "@/App";
 
-export const metadata: Metadata = {
-  title: "Admin Dashboard",
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-// Render the existing react-router-based admin UI inside Next.js.
-// This keeps your previous dashboard layout working without rewriting all admin routes.
+// React Router admin UI (must be a Client Component for hooks + dynamic).
 export default function AdminCatchAllPage() {
   return <App />;
 }
-

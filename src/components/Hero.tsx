@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "framer-motion";
 import { MessageCircle, ExternalLink, Truck, Sparkles, Star } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -12,7 +14,11 @@ const Hero = () => {
   const title = settings?.hero_title || "Make Every Moment Magical with Bouquets";
   const subtitle = settings?.hero_subtitle || "Refined bouquet creations designed to elevate life's most meaningful celebrations.";
   const tagline = settings?.hero_tagline || "We Make Every Moment Special";
-  const heroImage = settings?.hero_image_2 || "/hero2.jpeg";
+  // Prefer Hero 2; fall back to Hero 1 (ImgBB HTTPS URLs work on landing; /uploads/ often does not in production).
+  const heroImage =
+    settings?.hero_image_2?.trim() ||
+    settings?.hero_image_1?.trim() ||
+    "/hero2.jpeg";
 
   return (
     <section id="hero" className="relative min-h-screen flex items-center overflow-hidden gradient-hero">
@@ -108,10 +114,17 @@ const Hero = () => {
           >
             <div className="relative">
               <img
+                key={heroImage}
                 src={heroImage}
                 alt="Tinkerfly hero"
                 className="w-full max-w-lg rounded-card shadow-2xl animate-float-slow"
                 loading="eager"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (el.src.endsWith("/hero2.jpeg")) return;
+                  el.src = "/hero2.jpeg";
+                }}
               />
               <div className="absolute -inset-6 rounded-card bg-gradient-to-br from-brand-mint/15 to-brand-gold-soft/15 -z-10 blur-3xl" />
             </div>

@@ -6,7 +6,10 @@ export function useSiteSettings() {
   return useQuery({
     queryKey: ["site-settings"],
     queryFn: async () => {
-      const res = await fetch("/api/site-settings", { cache: "no-store" });
+      const res = await fetch(`/api/site-settings?_=${Date.now()}`, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error || "Failed to load site settings");
