@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Loader2 } from "lucide-react";
 
 interface Testimonial {
   id: string;
@@ -35,17 +35,22 @@ export default function TestimonialsManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Testimonial | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const fetchData = async () => {
-    const raw = localStorage.getItem("tinkerfly_testimonials");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      setItems(parsed.sort((a: Testimonial, b: Testimonial) => a.sort_order - b.sort_order));
-    } else {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/testimonials");
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to load testimonials");
+      const data = await res.json();
+      setItems((data ?? []).sort((a: Testimonial, b: Testimonial) => a.sort_order - b.sort_order));
+    } catch (err: any) {
+      toast({ title: "Load failed", description: err.message, variant: "destructive" });
       setItems([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -70,34 +75,58 @@ export default function TestimonialsManager() {
   };
 
   const handleSave = async () => {
-    const currentItems = [...items];
-    if (editing) {
-      const index = currentItems.findIndex(i => i.id === editing.id);
-      if (index > -1) {
-        currentItems[index] = { ...currentItems[index], ...form };
+    setSaving(true);
+    try {
+      if (editing) {
+        const res = await fetch(`/api/admin/testimonials/${editing.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...form, rating: Number(form.rating) }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Update failed");
+        toast({ title: "Testimonial updated" });
+      } else {
+        const res = await fetch(`/api/admin/testimonials`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Create failed");
+        toast({ title: "Testimonial created" });
       }
-      toast({ title: "Testimonial updated" });
-    } else {
-      currentItems.push({ id: "testi-" + Date.now(), ...form });
-      toast({ title: "Testimonial created" });
+      setDialogOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    localStorage.setItem("tinkerfly_testimonials", JSON.stringify(currentItems));
-    setDialogOpen(false);
-    fetchData();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this testimonial?")) return;
-    const currentItems = items.filter(i => i.id !== id);
-    localStorage.setItem("tinkerfly_testimonials", JSON.stringify(currentItems));
-    toast({ title: "Testimonial deleted" });
-    fetchData();
+    try {
+      const res = await fetch(`/api/admin/testimonials/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Delete failed");
+      toast({ title: "Testimonial deleted" });
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
   };
 
   const toggleActive = async (t: Testimonial) => {
-    const currentItems = items.map(i => i.id === t.id ? { ...i, is_active: !i.is_active } : i);
-    localStorage.setItem("tinkerfly_testimonials", JSON.stringify(currentItems));
-    fetchData();
+    try {
+      const res = await fetch(`/api/admin/testimonials/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !t.is_active }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Update failed");
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    }
   };
 
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -110,37 +139,49 @@ export default function TestimonialsManager() {
           <DialogTrigger asChild>
             <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Add Testimonial</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            className="max-w-lg max-h-[90vh] overflow-y-auto"
+            onInteractOutside={(event) => {
+              if (saving) event.preventDefault();
+            }}
+          >
             <DialogHeader><DialogTitle>{editing ? "Edit Testimonial" : "New Testimonial"}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Customer Name</Label>
-                <Input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
+                <Input disabled={saving} value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Role / Occasion</Label>
-                <Input value={form.role} onChange={(e) => setForm(f => ({ ...f, role: e.target.value }))} placeholder="e.g. Birthday Surprise, Bride-to-be" />
+                <Input disabled={saving} value={form.role} onChange={(e) => setForm(f => ({ ...f, role: e.target.value }))} placeholder="e.g. Birthday Surprise, Bride-to-be" />
               </div>
               <div className="space-y-2">
                 <Label>Review Text</Label>
-                <Textarea value={form.content} onChange={(e) => setForm(f => ({ ...f, content: e.target.value }))} rows={4} />
+                <Textarea disabled={saving} value={form.content} onChange={(e) => setForm(f => ({ ...f, content: e.target.value }))} rows={4} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Rating (1-5)</Label>
-                  <Input type="number" min={1} max={5} value={form.rating} onChange={(e) => setForm(f => ({ ...f, rating: parseInt(e.target.value) || 5 }))} />
+                  <Input disabled={saving} type="number" min={1} max={5} value={form.rating} onChange={(e) => setForm(f => ({ ...f, rating: parseInt(e.target.value) || 5 }))} />
                 </div>
                 <div className="space-y-2">
                   <Label>Sort Order</Label>
-                  <Input type="number" value={form.sort_order} onChange={(e) => setForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} />
+                  <Input disabled={saving} type="number" value={form.sort_order} onChange={(e) => setForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} />
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Switch checked={form.is_active} onCheckedChange={(v) => setForm(f => ({ ...f, is_active: v }))} />
+                <Switch disabled={saving} checked={form.is_active} onCheckedChange={(v) => setForm(f => ({ ...f, is_active: v }))} />
                 <Label>Active</Label>
               </div>
-              <Button onClick={handleSave} className="w-full" disabled={!form.name || !form.content}>
-                {editing ? "Update" : "Create"}
+              <Button onClick={handleSave} className="w-full" disabled={!form.name || !form.content || saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {editing ? "Updating testimonial..." : "Creating testimonial..."}
+                  </>
+                ) : (
+                  editing ? "Update Testimonial" : "Create Testimonial"
+                )}
               </Button>
             </div>
           </DialogContent>

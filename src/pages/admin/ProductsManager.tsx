@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,12 +10,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Star, Search, Upload, X } from "lucide-react";
-import type { Tables } from "@/integrations/supabase/types";
+import { Plus, Pencil, Trash2, Star, Search, Upload, X, Loader2 } from "lucide-react";
 
-type Product = Tables<"products">;
-type Category = Tables<"categories">;
-type ProductImage = Tables<"product_images">;
+type Product = {
+  id: string;
+  category_id: string | null;
+  name: string;
+  description: string | null;
+  price: number;
+  badge: string | null;
+  is_featured: boolean;
+  is_active: boolean;
+  customizable: boolean;
+  sort_order: number;
+};
+
+type Category = {
+  id: string;
+  name: string;
+};
+
+type ProductImage = {
+  id: string;
+  product_id: string;
+  image_path: string;
+  sort_order: number;
+};
 
 const BADGE_OPTIONS = [
   { value: "none", label: "No Badge" },
@@ -43,29 +62,38 @@ export default function ProductsManager() {
   const [filterFeatured, setFilterFeatured] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const { toast } = useToast();
 
   const fetchData = async () => {
-    // Read from localStorage json data instead of Supabase
-    const pStr = localStorage.getItem("tinkerfly_products");
-    const cStr = localStorage.getItem("tinkerfly_categories");
-    const iStr = localStorage.getItem("tinkerfly_product_images");
+    setLoading(true);
+    try {
+      const [catsRes, prodsRes, imgsRes] = await Promise.all([
+        fetch("/api/admin/categories"),
+        fetch("/api/admin/products"),
+        fetch("/api/admin/product-images"),
+      ]);
 
-    const p = pStr ? JSON.parse(pStr) : [];
-    let c = cStr ? JSON.parse(cStr) : [];
-    const i = iStr ? JSON.parse(iStr) : [];
+      if (!catsRes.ok || !prodsRes.ok || !imgsRes.ok) {
+        const msg = await Promise.resolve(
+          (await (catsRes.ok ? prodsRes : catsRes).json().catch(() => ({})))?.error
+        );
+        throw new Error(msg || "Failed to load catalog data");
+      }
 
-    // Bootstrap a default category if empty so we can create products without Supabase
-    if (c.length === 0) {
-      c = [{ id: "cat-1", name: "Default Category", sort_order: 0 }];
-      localStorage.setItem("tinkerfly_categories", JSON.stringify(c));
+      const cats = await catsRes.json();
+      const prods = await prodsRes.json();
+      const imgs = await imgsRes.json();
+
+      setCategories(cats ?? []);
+      setProducts(prods ?? []);
+      setProductImages(imgs ?? []);
+    } catch (err: any) {
+      toast({ title: "Failed to load catalog data", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-
-    setProducts(p);
-    setCategories(c);
-    setProductImages(i);
-    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -99,6 +127,7 @@ export default function ProductsManager() {
     try {
       for (let idx = 0; idx < files.length; idx++) {
         const file = files[idx];
+        const safeName = file.name.replace(/[^\w.\-]+/g, "_");
         const formData = new FormData();
         formData.append("key", "d780a2a4ef3db8699ca4d25a35c8d49a");
         formData.append("image", file);
@@ -108,10 +137,14 @@ export default function ProductsManager() {
           body: formData,
         });
         const data = await res.json();
-        if (data.success) {
-          newUrls.push(data.data.url);
-        } else {
-          toast({ title: "Upload failed", description: data.error?.message, variant: "destructive" });
+        const url = data?.success ? data?.data?.url : null;
+        if (typeof url === "string" && url.trim() !== "") newUrls.push(url);
+        else {
+          toast({
+            title: "Upload failed",
+            description: data?.error?.message || "Invalid upload response",
+            variant: "destructive",
+          });
         }
       }
       if (newUrls.length > 0) {
@@ -135,97 +168,72 @@ export default function ProductsManager() {
       is_featured: form.is_featured, is_active: form.is_active,
       customizable: form.customizable, sort_order: form.sort_order,
     };
-    let productId = editing?.id;
-
-    const currentProds = [...products];
-
-    if (editing) {
-      const pIndex = currentProds.findIndex(p => p.id === editing.id);
-      if (pIndex > -1) {
-        currentProds[pIndex] = { ...currentProds[pIndex], ...payload } as Product;
+    setSaving(true);
+    try {
+      if (editing) {
+        const res = await fetch(`/api/admin/products/${editing.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, images: pendingImages }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to update product");
+      } else {
+        const res = await fetch(`/api/admin/products`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, images: pendingImages }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to create product");
       }
-    } else {
-      productId = "prod-" + Date.now();
-      currentProds.push({ id: productId, ...payload } as any);
+
+      toast({ title: editing ? "Product updated" : "Product created" });
+      setDialogOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-
-    // Save to JSON storage
-    localStorage.setItem("tinkerfly_products", JSON.stringify(currentProds));
-
-    // Sync images
-    if (productId) {
-      // Read latest images directly from storage to avoid stale state issues
-      const iStr = localStorage.getItem("tinkerfly_product_images");
-      const allImages = iStr ? JSON.parse(iStr) : [];
-      let currentImages = allImages.filter((img: any) => img.product_id !== productId);
-      
-      if (pendingImages.length > 0) {
-        const imageRows = pendingImages.map((url, idx) => ({
-          id: "img-" + Date.now() + "-" + idx,
-          product_id: productId!,
-          image_path: url,
-          sort_order: idx,
-          created_at: new Date().toISOString(),
-        }));
-        currentImages = [...currentImages, ...imageRows];
-      }
-      localStorage.setItem("tinkerfly_product_images", JSON.stringify(currentImages));
-    }
-
-    toast({ title: editing ? "Product updated" : "Product created" });
-    setDialogOpen(false);
-    fetchData(); // This will refresh the state from localStorage
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this product?")) return;
-    const newProds = products.filter(p => p.id !== id);
-    const newImgs = productImages.filter(img => img.product_id !== id);
-    localStorage.setItem("tinkerfly_products", JSON.stringify(newProds));
-    localStorage.setItem("tinkerfly_product_images", JSON.stringify(newImgs));
-    toast({ title: "Product deleted" });
-    fetchData();
+    try {
+      const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Delete failed");
+      toast({ title: "Product deleted" });
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
   };
 
   const toggleFeatured = async (p: Product) => {
-    const newProds = products.map(prod => prod.id === p.id ? { ...prod, is_featured: !prod.is_featured } : prod);
-    localStorage.setItem("tinkerfly_products", JSON.stringify(newProds));
+    const res = await fetch(`/api/admin/products/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_featured: !p.is_featured }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast({ title: "Update failed", description: data.error || "Failed to update", variant: "destructive" });
+      return;
+    }
     fetchData();
   };
 
   const toggleActive = async (p: Product) => {
-    const newProds = products.map(prod => prod.id === p.id ? { ...prod, is_active: !prod.is_active } : prod);
-    localStorage.setItem("tinkerfly_products", JSON.stringify(newProds));
+    const res = await fetch(`/api/admin/products/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: !p.is_active }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast({ title: "Update failed", description: data.error || "Failed to update", variant: "destructive" });
+      return;
+    }
     fetchData();
-  };
-
-  const handleExportJSON = () => {
-    const data = { products, categories, productImages };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "products-data.json";
-    a.click();
-  };
-
-  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target?.result as string);
-        if (data.products) localStorage.setItem("tinkerfly_products", JSON.stringify(data.products));
-        if (data.categories) localStorage.setItem("tinkerfly_categories", JSON.stringify(data.categories));
-        if (data.productImages) localStorage.setItem("tinkerfly_product_images", JSON.stringify(data.productImages));
-        toast({ title: "JSON data imported successfully!" });
-        fetchData();
-      } catch (err: any) {
-        toast({ title: "Failed to parse JSON", description: err.message, variant: "destructive" });
-      }
-    };
-    reader.readAsText(file);
   };
 
 
@@ -245,8 +253,6 @@ export default function ProductsManager() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-display font-bold">Products</h2>
         <div className="flex flex-wrap items-center gap-2">
-          <Input type="file" accept=".json" onChange={handleImportJSON} className="w-auto h-9 text-sm p-1" />
-          <Button variant="outline" size="sm" onClick={handleExportJSON}>Export JSON</Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="h-4 w-4 mr-2" />Add Product</Button>
@@ -335,8 +341,15 @@ export default function ProductsManager() {
                   <Label>Customizable</Label>
                 </div>
               </div>
-              <Button onClick={handleSave} className="w-full" disabled={!form.name || !form.category_id}>
-                {editing ? "Update Product" : "Create Product"}
+              <Button onClick={handleSave} className="w-full" disabled={!form.name || !form.category_id || saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {editing ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  editing ? "Update Product" : "Create Product"
+                )}
               </Button>
             </div>
           </DialogContent>

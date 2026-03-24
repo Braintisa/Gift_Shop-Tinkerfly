@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { MessageCircle, ExternalLink, Truck, Sparkles, Star } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import heroBouquet from "@/assets/hero-bouquet.jpg";
 
 const ease = [0.23, 1, 0.32, 1] as const;
 
@@ -13,6 +12,7 @@ const Hero = () => {
   const title = settings?.hero_title || "Make Every Moment Magical with Bouquets";
   const subtitle = settings?.hero_subtitle || "Refined bouquet creations designed to elevate life's most meaningful celebrations.";
   const tagline = settings?.hero_tagline || "We Make Every Moment Special";
+  const heroImage = settings?.hero_image_2 || "/hero2.jpeg";
 
   return (
     <section id="hero" className="relative min-h-screen flex items-center overflow-hidden gradient-hero">
@@ -108,8 +108,8 @@ const Hero = () => {
           >
             <div className="relative">
               <img
-                src={heroBouquet}
-                alt="Elegant bouquet by Tinkerfly"
+                src={heroImage}
+                alt="Tinkerfly hero"
                 className="w-full max-w-lg rounded-card shadow-2xl animate-float-slow"
                 loading="eager"
               />

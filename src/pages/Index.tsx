@@ -1,4 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import Header from "@/components/Header";
@@ -16,7 +19,9 @@ import CustomCursor from "@/components/CustomCursor";
 import AmbientMist from "@/components/AmbientMist";
 import { SAMPLE_CATEGORIES, POPULAR_PRODUCTS, type Category, type Product } from "@/lib/constants";
 
-const Index = () => {
+const queryClient = new QueryClient();
+
+function IndexClient() {
   const { data: settings } = useSiteSettings();
   const whatsappNumber = settings?.whatsapp_number || "94722507196";
 
@@ -181,6 +186,16 @@ const Index = () => {
       </div>
     </div>
   );
-};
+}
 
-export default Index;
+export default function Index() {
+  // Next.js prerenders this file as a route (e.g. `/Index`), but it has client-only hooks.
+  // Avoid running hooks during SSR/prerender by rendering nothing on the server.
+  if (typeof window === "undefined") return null;
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <IndexClient />
+    </QueryClientProvider>
+  );
+}

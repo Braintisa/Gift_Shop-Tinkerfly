@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +15,11 @@ export default function AdminForgotPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
   const { toast } = useToast();
+
+  const navigate = (path: string) => {
+    if (typeof window !== "undefined") window.location.href = path;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,12 +163,12 @@ export default function AdminForgotPassword() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Resetting..." : "Reset Password"}
               </Button>
-              <Link to="/admin/login" className="block">
-                <Button variant="ghost" className="w-full gap-2">
+              <a href="/admin/login" className="block">
+                <Button variant="ghost" className="w-full gap-2" type="button">
                   <ArrowLeft className="w-4 h-4" />
                   Back to Sign In
                 </Button>
-              </Link>
+              </a>
             </form>
           )}
         </CardContent>

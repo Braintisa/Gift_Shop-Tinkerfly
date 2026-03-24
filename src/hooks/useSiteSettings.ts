@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 export type SiteSettings = Record<string, string>;
 
@@ -7,15 +6,17 @@ export function useSiteSettings() {
   return useQuery({
     queryKey: ["site-settings"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("site_settings")
-        .select("setting_key, setting_value");
-      const settings: SiteSettings = {};
-      (data ?? []).forEach((row: any) => {
-        settings[row.setting_key] = row.setting_value;
-      });
-      return settings;
+      const res = await fetch("/api/site-settings", { cache: "no-store" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Failed to load site settings");
+      }
+      return (await res.json()) as SiteSettings;
     },
-    staleTime: 5 * 60 * 1000,
+    // Admin changes should reflect immediately on the landing page.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }

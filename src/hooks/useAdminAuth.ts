@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -7,7 +6,11 @@ export function useAdminAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const navigate = useNavigate();
+
+  const navigate = useCallback((path: string) => {
+    // During Next.js prerender/build there is no Router context.
+    if (typeof window !== "undefined") window.location.href = path;
+  }, []);
 
   useEffect(() => {
     // Check if we are using the mock bypass

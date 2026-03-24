@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Loader2 } from "lucide-react";
+import { Save, Loader2, UploadCloud } from "lucide-react";
 
 interface SettingRow {
   id: string;
@@ -61,27 +61,62 @@ export default function SiteSettingsManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const [heroUploading, setHeroUploading] = useState<{
+    hero1: boolean;
+    hero2: boolean;
+  }>({ hero1: false, hero2: false });
 
   useEffect(() => {
-    const raw = localStorage.getItem("tinkerfly_site_settings");
-    if (raw) {
-      setSettings(JSON.parse(raw));
-    }
-    setLoading(false);
+    const load = async () => {
+      try {
+        const res = await fetch("/api/admin/site-settings");
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to load settings");
+        const data = await res.json();
+        setSettings(data ?? {});
+      } catch (err: any) {
+        toast({ title: "Load failed", description: err.message, variant: "destructive" });
+        setSettings({});
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    // Artificial delay to mimic save
-    await new Promise(r => setTimeout(r, 500));
-    localStorage.setItem("tinkerfly_site_settings", JSON.stringify(settings));
-    setSaving(false);
-    toast({ title: "Settings saved successfully" });
+    try {
+      const res = await fetch("/api/admin/site-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Save failed");
+      toast({ title: "Settings saved successfully" });
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const update = (key: string, value: string) => {
     setSettings((s) => ({ ...s, [key]: value }));
   };
+
+  const savePartial = async (partial: Record<string, string>) => {
+    const res = await fetch("/api/admin/site-settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(partial),
+    });
+    if (!res.ok) {
+      throw new Error((await res.json().catch(() => ({}))).error || "Failed to save");
+    }
+  };
+
+  const hero_image_1 = settings?.hero_image_1 || "/hero1.jpeg";
+  const hero_image_2 = settings?.hero_image_2 || "/hero2.jpeg";
 
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 
@@ -125,6 +160,101 @@ export default function SiteSettingsManager() {
           </Card>
         ))}
       </div>
+
+      {/* Hero images upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Hero Images</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label>Hero Image 1</Label>
+              <div className="rounded-card overflow-hidden border border-border/40 bg-card">
+                <img src={hero_image_1} alt="Hero 1 preview" className="w-full h-40 object-cover" />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  disabled={heroUploading.hero1 || heroUploading.hero2}
+                  onChange={async (e) => {
+                    const inputEl = e.currentTarget;
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setHeroUploading((s) => ({ ...s, hero1: true }));
+                    try {
+                      const fd = new FormData();
+                      fd.append("hero1", file);
+                      const res = await fetch("/api/admin/hero-images", { method: "POST", body: fd });
+                      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Upload failed");
+                      const data = await res.json();
+                      const url = data.hero_image_1 as string | undefined;
+                      if (url) {
+                        setSettings((s) => ({ ...s, hero_image_1: url }));
+                        await savePartial({ hero_image_1: url });
+                        toast({ title: "Hero Image 1 uploaded" });
+                      }
+                    } catch (err: any) {
+                      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+                    } finally {
+                      setHeroUploading((s) => ({ ...s, hero1: false }));
+                      inputEl.value = "";
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Used as About section fallback if `about_image` is empty.</p>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Hero Image 2</Label>
+              <div className="rounded-card overflow-hidden border border-border/40 bg-card">
+                <img src={hero_image_2} alt="Hero 2 preview" className="w-full h-40 object-cover" />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  disabled={heroUploading.hero1 || heroUploading.hero2}
+                  onChange={async (e) => {
+                    const inputEl = e.currentTarget;
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setHeroUploading((s) => ({ ...s, hero2: true }));
+                    try {
+                      const fd = new FormData();
+                      fd.append("hero2", file);
+                      const res = await fetch("/api/admin/hero-images", { method: "POST", body: fd });
+                      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Upload failed");
+                      const data = await res.json();
+                      const url = data.hero_image_2 as string | undefined;
+                      if (url) {
+                        setSettings((s) => ({ ...s, hero_image_2: url }));
+                        await savePartial({ hero_image_2: url });
+                        toast({ title: "Hero Image 2 uploaded" });
+                      }
+                    } catch (err: any) {
+                      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+                    } finally {
+                      setHeroUploading((s) => ({ ...s, hero2: false }));
+                      inputEl.value = "";
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Used in the landing hero section.</p>
+            </div>
+          </div>
+
+          {(heroUploading.hero1 || heroUploading.hero2) && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <UploadCloud className="h-4 w-4 animate-spin" />
+              <span>Uploading...</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

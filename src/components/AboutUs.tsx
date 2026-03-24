@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { Award, Truck, Sparkles } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import heroBouquet from "@/assets/hero-bouquet.jpg";
 
 const ease: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
@@ -10,7 +9,7 @@ const AboutUs = () => {
   const title = settings?.about_title || "About Tinkerfly";
   const heading = settings?.about_heading || "Elegant Bouquets for Every Occasion";
   const description = settings?.about_description || "At Tinkerfly, every occasion deserves thoughtful presentation. Our collection features carefully styled bouquet designs created for meaningful celebrations and memorable moments. Each arrangement is prepared with attention to balance, presentation, and detail, offering an elegant gifting experience supported by reliable islandwide delivery.";
-  const image = settings?.about_image || heroBouquet;
+  const image = settings?.about_image || settings?.hero_image_1 || "/hero1.jpeg";
 
   return (
     <section id="about-us" className="py-28 section-cream relative">

@@ -1,20 +1,24 @@
 import { motion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import heroBouquet from "@/assets/hero-bouquet.jpg";
-
 const ease: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
-const fallbackPosts = [
-  { id: "1", image_url: heroBouquet, caption: "Elegant bouquet designs for special moments", link_url: "" },
-  { id: "2", image_url: heroBouquet, caption: "Styled arrangements for meaningful celebrations", link_url: "" },
-  { id: "3", image_url: heroBouquet, caption: "Celebrate with Tinkerfly bouquets", link_url: "" },
-  { id: "4", image_url: heroBouquet, caption: "Premium quality presentation", link_url: "" },
-  { id: "5", image_url: heroBouquet, caption: "Thoughtfully prepared for every occasion", link_url: "" },
-  { id: "6", image_url: heroBouquet, caption: "Islandwide delivery — elegant and refined", link_url: "" },
-];
+type GalleryPost = {
+  id: string;
+  image_url: string;
+  caption: string;
+  link_url: string | null;
+};
+
+function normalizeExternalUrl(url: string | null | undefined, fallback: string) {
+  const value = (url ?? "").trim();
+  if (!value) return fallback;
+  // If user stored "example.com/abc", convert to "https://example.com/abc"
+  if (/^https?:\/\//i.test(value) || /^mailto:/i.test(value)) return value;
+  if (value.startsWith("//")) return `https:${value}`;
+  return `https://${value}`;
+}
 
 const SocialFeed = () => {
   const { data: settings } = useSiteSettings();
@@ -25,25 +29,17 @@ const SocialFeed = () => {
   const { data: galleryItems } = useQuery({
     queryKey: ["public-gallery"],
     queryFn: async () => {
-      // Local Storage JSON Fetch first
-      const raw = localStorage.getItem("tinkerfly_social_gallery");
-      if (raw) {
-        let parsed = JSON.parse(raw);
-        parsed = parsed.filter((i: any) => i.is_active !== false).sort((a: any, b: any) => a.sort_order - b.sort_order);
-        if (parsed.length > 0) return parsed;
-      }
-
-      // Supabase Fallback
-      const { data } = await supabase
-        .from("social_gallery")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order");
-      return data && data.length > 0 ? data : fallbackPosts;
+      const res = await fetch("/api/social-gallery");
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to load social gallery");
+      return (await res.json()) as GalleryPost[];
     },
   });
 
-  const posts = galleryItems ?? fallbackPosts;
+  const posts = (galleryItems ?? []) as GalleryPost[];
+
+  if (!posts || posts.length === 0) {
+    return null;
+  }
 
   return (
     <section className="py-28 section-cream relative">
@@ -65,10 +61,10 @@ const SocialFeed = () => {
         </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl mx-auto mb-12">
-          {posts.map((post: any, i: number) => (
+          {posts.map((post: GalleryPost, i: number) => (
             <motion.a
               key={post.id}
-              href={post.link_url || instagramUrl}
+              href={normalizeExternalUrl(post.link_url, instagramUrl)}
               target="_blank"
               rel="noopener noreferrer"
               initial={{ opacity: 0, y: 30 }}
@@ -79,7 +75,7 @@ const SocialFeed = () => {
               style={{ borderRadius: 18 }}
             >
               <img
-                src={post.image_url || heroBouquet}
+                src={post.image_url}
                 alt={post.caption || "Gallery"}
                 loading="lazy"
                 className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"

@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { MapPin, Phone, MessageCircle } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import logo from "@/assets/tinkerfly-logo.jpeg";
 
 const ease: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
@@ -107,7 +106,7 @@ const ContactFooter = () => {
           style={{ background: "linear-gradient(90deg, transparent 10%, hsl(var(--brand-gold) / 0.15), transparent 90%)" }} />
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center gap-6">
-            <img src={logo} alt="Tinkerfly" className="h-16 rounded-xl" />
+            <img src="/logo.png" alt="Tinkerfly" className="h-16 rounded-xl" />
             <p className="text-white/50 font-display italic text-lg">"{footerTagline}"</p>
             <div className="flex gap-5">
               {socialLinks.map((s) => (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { getWhatsAppOrderLink, getWhatsAppOrderLinkWithNumber, type Product } from "@/lib/constants";
@@ -22,8 +22,15 @@ const ease: [number, number, number, number] = [0.23, 1, 0.32, 1];
 const ProductCard = ({ product, index, whatsappNumber }: ProductCardProps) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
 
-  const productUrl = typeof window !== 'undefined' ? `${window.location.origin}/?product=${product.id}` : '';
+  useEffect(() => {
+    if (!modalOpen) setIsZoomed(false);
+  }, [modalOpen]);
+
+  // Use a stable relative URL to avoid SSR/client hydration mismatches.
+  const productUrl = `/?product=${product.id}`;
 
   const orderLink = whatsappNumber
     ? getWhatsAppOrderLinkWithNumber(whatsappNumber, product.name, product.price, product.categoryName, productUrl)
@@ -111,15 +118,52 @@ const ProductCard = ({ product, index, whatsappNumber }: ProductCardProps) => {
               <X size={18} className="sm:w-5 sm:h-5" />
             </button>
 
-            {/* Image section — controlled size */}
+            {/* Image section — controlled size with cursor-zoom */}
             <div className="relative w-full shrink-0" style={{ maxHeight: "45vh" }}>
               <div className="absolute inset-0 bg-gradient-to-br from-brand-mint-light/15 via-transparent to-brand-gold-light/15 z-0" />
-              <img
-                src={images[imgIdx] || heroBouquet}
-                alt={product.name}
-                className="w-full h-full object-cover relative z-10"
+              <div
+                className="relative w-full h-full overflow-hidden cursor-zoom-in touch-none"
                 style={{ aspectRatio: "4/3", maxHeight: "45vh" }}
-              />
+                onPointerEnter={(e) => {
+                  if (e.pointerType === "mouse") setIsZoomed(true);
+                }}
+                onPointerLeave={() => {
+                  setIsZoomed(false);
+                  setZoomOrigin({ x: 50, y: 50 });
+                }}
+                onPointerDown={() => {
+                  // Supports touch/pen: zoom while user is pressing.
+                  setIsZoomed(true);
+                }}
+                onPointerUp={() => {
+                  setIsZoomed(false);
+                  setZoomOrigin({ x: 50, y: 50 });
+                }}
+                onPointerCancel={() => {
+                  setIsZoomed(false);
+                  setZoomOrigin({ x: 50, y: 50 });
+                }}
+                onPointerMove={(e) => {
+                  if (!isZoomed) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                  setZoomOrigin({
+                    x: Math.min(100, Math.max(0, x)),
+                    y: Math.min(100, Math.max(0, y)),
+                  });
+                }}
+              >
+                <img
+                  src={images[imgIdx] || heroBouquet}
+                  alt={product.name}
+                  className="w-full h-full object-cover relative z-10 transition-transform duration-300 ease-out"
+                  style={{
+                    transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
+                    transform: isZoomed ? "scale(1.7)" : "scale(1)",
+                  }}
+                />
+              </div>
               {product.badge && (
                 <span className={`${badgeClass[product.badge]} !top-3 !left-3 z-20 !text-[10px] !px-2.5 !py-0.5`}>{product.badge}</span>
               )}

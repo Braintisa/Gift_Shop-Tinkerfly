@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Loader2 } from "lucide-react";
 
 interface GalleryItem {
   id: string;
@@ -33,17 +32,22 @@ export default function SocialGalleryManager() {
   const [editing, setEditing] = useState<GalleryItem | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const fetchData = async () => {
-    const raw = localStorage.getItem("tinkerfly_social_gallery");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      setItems(parsed.sort((a: GalleryItem, b: GalleryItem) => a.sort_order - b.sort_order));
-    } else {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/social-gallery");
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to load gallery items");
+      const data = await res.json();
+      setItems((data ?? []).sort((a: GalleryItem, b: GalleryItem) => a.sort_order - b.sort_order));
+    } catch (err: any) {
+      toast({ title: "Load failed", description: err.message, variant: "destructive" });
       setItems([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -88,38 +92,58 @@ export default function SocialGalleryManager() {
   };
 
   const handleSave = async () => {
-    // Read latest from storage to avoid stale state
-    const sStr = localStorage.getItem("tinkerfly_social_gallery");
-    const currentItems = sStr ? JSON.parse(sStr) : [];
-
-    if (editing) {
-      const index = currentItems.findIndex((i: any) => i.id === editing.id);
-      if (index > -1) {
-        currentItems[index] = { ...currentItems[index], ...form };
+    setSaving(true);
+    try {
+      if (editing) {
+        const res = await fetch(`/api/admin/social-gallery/${editing.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Update failed");
+        toast({ title: "Gallery item updated" });
+      } else {
+        const res = await fetch(`/api/admin/social-gallery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Create failed");
+        toast({ title: "Gallery item created" });
       }
-      toast({ title: "Gallery item updated" });
-    } else {
-      currentItems.push({ id: "gallery-" + Date.now(), ...form });
-      toast({ title: "Gallery item created" });
+      setDialogOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-
-    localStorage.setItem("tinkerfly_social_gallery", JSON.stringify(currentItems));
-    setDialogOpen(false);
-    fetchData();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this gallery item?")) return;
-    const currentItems = items.filter(i => i.id !== id);
-    localStorage.setItem("tinkerfly_social_gallery", JSON.stringify(currentItems));
-    toast({ title: "Gallery item deleted" });
-    fetchData();
+    try {
+      const res = await fetch(`/api/admin/social-gallery/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Delete failed");
+      toast({ title: "Gallery item deleted" });
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
   };
 
   const toggleActive = async (g: GalleryItem) => {
-    const currentItems = items.map(i => i.id === g.id ? { ...i, is_active: !i.is_active } : i);
-    localStorage.setItem("tinkerfly_social_gallery", JSON.stringify(currentItems));
-    fetchData();
+    try {
+      const res = await fetch(`/api/admin/social-gallery/${g.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !g.is_active }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Update failed");
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    }
   };
 
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -161,8 +185,15 @@ export default function SocialGalleryManager() {
                   <Label>Active</Label>
                 </div>
               </div>
-              <Button onClick={handleSave} className="w-full" disabled={!form.image_url}>
-                {editing ? "Update" : "Create"}
+              <Button onClick={handleSave} className="w-full" disabled={!form.image_url || saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {editing ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  editing ? "Update" : "Create"
+                )}
               </Button>
             </div>
           </DialogContent>

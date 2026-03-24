@@ -15,7 +15,7 @@ import ProductsManager from "./pages/admin/ProductsManager";
 import TestimonialsManager from "./pages/admin/TestimonialsManager";
 import SocialGalleryManager from "./pages/admin/SocialGalleryManager";
 import SiteSettingsManager from "./pages/admin/SiteSettingsManager";
-import AdminEmailsManager from "./pages/admin/AdminEmailsManager";
+import AdminUsersManager from "./pages/admin/AdminUsersManager";
 
 const queryClient = new QueryClient();
 
@@ -37,7 +37,7 @@ const App = () => (
             <Route path="testimonials" element={<TestimonialsManager />} />
             <Route path="social-gallery" element={<SocialGalleryManager />} />
             <Route path="settings" element={<SiteSettingsManager />} />
-            <Route path="admin-emails" element={<AdminEmailsManager />} />
+            <Route path="admin-users" element={<AdminUsersManager />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

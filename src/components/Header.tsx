@@ -4,7 +4,6 @@ import { Menu, X, ChevronDown, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import logo from "@/assets/tinkerfly-logo.jpeg";
 
 const staticLinks = [
   { label: "Home", href: "#hero" },
@@ -86,7 +85,7 @@ const Header = () => {
     >
       <div className="container mx-auto flex items-center justify-between px-4">
         <a href="#hero" className="flex items-center gap-2">
-          <img src={logo} alt="Tinkerfly" className="h-12 w-auto rounded-lg" />
+          <img src="/logo.png" alt="Tinkerfly" className="h-12 w-auto rounded-lg" />
         </a>
 
         <nav className="hidden md:flex items-center gap-7">

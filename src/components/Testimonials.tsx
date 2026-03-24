@@ -1,31 +1,34 @@
 import { motion } from "framer-motion";
 import { Star, Quote } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 const ease: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
-const fallbackTestimonials = [
-  { id: "1", name: "Sachini Perera", role: "Bride-to-be", content: "Absolutely stunning bouquet! The attention to detail was incredible. Tinkerfly made my special day even more memorable.", rating: 5 },
-  { id: "2", name: "Kavinda Fernando", role: "Anniversary Gift", content: "Ordered a rose bouquet for our anniversary — my wife was speechless! The delivery was prompt and the presentation was truly elegant.", rating: 5 },
-  { id: "3", name: "Nimasha De Silva", role: "Birthday Surprise", content: "The bouquet was beyond beautiful. My best friend couldn't stop smiling. The quality and styling is unmatched.", rating: 5 },
-  { id: "4", name: "Tharindu Jayasinghe", role: "Graduation Celebration", content: "Ordered for my sister's graduation — she loved it! Premium quality, refined design, and reliable islandwide delivery.", rating: 5 },
-];
+type Testimonial = {
+  id: string;
+  name: string;
+  role: string | null;
+  content: string;
+  rating: number;
+  avatar_url: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
 
 const Testimonials = () => {
   const { data: testimonials } = useQuery({
     queryKey: ["public-testimonials"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("testimonials")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order");
-      return data && data.length > 0 ? data : fallbackTestimonials;
+      const res = await fetch("/api/testimonials");
+      if (!res.ok) throw new Error("Failed to load testimonials");
+      return (await res.json()) as Testimonial[];
     },
   });
 
-  const items = testimonials ?? fallbackTestimonials;
+  const items = (testimonials ?? []) as Testimonial[];
+
+  // If there is no real data in MySQL, don't show dummy content.
+  if (!items || items.length === 0) return null;
 
   return (
     <section className="py-28 section-premium relative">
@@ -50,7 +53,7 @@ const Testimonials = () => {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {items.map((t: any, i: number) => (
+          {items.map((t: Testimonial, i: number) => (
             <motion.div
               key={t.id}
               initial={{ opacity: 0, y: 40 }}
