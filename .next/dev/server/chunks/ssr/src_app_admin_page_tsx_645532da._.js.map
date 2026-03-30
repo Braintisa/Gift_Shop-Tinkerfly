@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///var/www/Gift_Shop-Tinkerfly-/src/app/admin/page.tsx"],"sourcesContent":["\"use client\";\n\nexport default function AdminHomePage() {\n  return (\n    <div className=\"min-h-screen flex items-center justify-center bg-background\">\n      <div className=\"text-center space-y-4\">\n        <h1 className=\"text-3xl font-display font-bold\">Admin Dashboard</h1>\n        <p className=\"text-muted-foreground\">\n          Login succeeded. The full admin dashboard migration to Next.js is still in progress.\n        </p>\n      </div>\n    </div>\n  );\n}\n\n"],"names":[],"mappings":";;;;;AAAA;;AAEe,SAAS;IACtB,qBACE,8OAAC;QAAI,WAAU;kBACb,cAAA,8OAAC;YAAI,WAAU;;8BACb,8OAAC;oBAAG,WAAU;8BAAkC;;;;;;8BAChD,8OAAC;oBAAE,WAAU;8BAAwB;;;;;;;;;;;;;;;;;AAM7C"}}]
+}

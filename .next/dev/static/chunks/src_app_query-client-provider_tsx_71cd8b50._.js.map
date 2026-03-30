@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///var/www/Gift_Shop-Tinkerfly-/src/app/query-client-provider.tsx"],"sourcesContent":["\"use client\";\n\nimport { QueryClient, QueryClientProvider } from \"@tanstack/react-query\";\nimport type { ReactNode } from \"react\";\n\nconst queryClient = new QueryClient();\n\nexport function AppQueryClientProvider({ children }: { children: ReactNode }) {\n  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;\n}\n\n"],"names":[],"mappings":";;;;;AAEA;AAAA;AAFA;;;AAKA,MAAM,cAAc,IAAI,+LAAW;AAE5B,SAAS,uBAAuB,EAAE,QAAQ,EAA2B;IAC1E,qBAAO,6LAAC,gNAAmB;QAAC,QAAQ;kBAAc;;;;;;AACpD;KAFgB"}}]
+}

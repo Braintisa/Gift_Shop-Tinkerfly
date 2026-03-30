@@ -1,0 +1,9 @@
+__turbopack_load_page_chunks__("/admin/TestimonialsManager", [
+  "static/chunks/df3437caa7965bbc.js",
+  "static/chunks/d29b1b6617fa617e.js",
+  "static/chunks/726f1e74e52703ec.js",
+  "static/chunks/af4c2c75d738de29.js",
+  "static/chunks/9e9ed20ed48678f9.js",
+  "static/chunks/adeae07c1135674c.js",
+  "static/chunks/turbopack-5c6f4f973a00751d.js"
+])

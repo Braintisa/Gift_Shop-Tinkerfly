@@ -1,0 +1,8 @@
+{
+  "/api/catalog/route": "app/api/catalog/route.js",
+  "/api/popular/route": "app/api/popular/route.js",
+  "/api/site-settings/route": "app/api/site-settings/route.js",
+  "/api/social-gallery/route": "app/api/social-gallery/route.js",
+  "/api/testimonials/route": "app/api/testimonials/route.js",
+  "/page": "app/page.js"
+}

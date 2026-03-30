@@ -1,0 +1,18 @@
+{
+  "/AdminForgotPassword": "pages/AdminForgotPassword.html",
+  "/AdminLogin": "pages/AdminLogin.html",
+  "/Index": "pages/Index.html",
+  "/NotFound": "pages/NotFound.html",
+  "/_app": "pages/_app.js",
+  "/_document": "pages/_document.js",
+  "/_error": "pages/_error.js",
+  "/admin/AdminLayout": "pages/admin/AdminLayout.html",
+  "/admin/AdminUsersManager": "pages/admin/AdminUsersManager.html",
+  "/admin/CategoriesManager": "pages/admin/CategoriesManager.html",
+  "/admin/DashboardHome": "pages/admin/DashboardHome.html",
+  "/admin/ProductsManager": "pages/admin/ProductsManager.html",
+  "/admin/SiteSettingsManager": "pages/admin/SiteSettingsManager.html",
+  "/admin/SocialGalleryManager": "pages/admin/SocialGalleryManager.html",
+  "/admin/TestimonialsManager": "pages/admin/TestimonialsManager.html",
+  "/404": "pages/404.html"
+}
