@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const staticLinks = [
@@ -20,32 +19,14 @@ const Header = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: settings } = useSiteSettings();
 
+  // Same source as the landing page (`/api/catalog`) so the Collections menu matches each section.
   const { data: categories } = useQuery({
     queryKey: ["nav-categories"],
     queryFn: async () => {
-      // Local Storage check first
-      const cStr = localStorage.getItem("tinkerfly_categories");
-      const pStr = localStorage.getItem("tinkerfly_products");
-      
-      if (cStr && pStr) {
-        const cats = JSON.parse(cStr).filter((c: any) => c.is_active !== false);
-        const prods = JSON.parse(pStr).filter((p: any) => p.is_active !== false);
-        
-        // Only return categories that actually have active products
-        const activeCats = cats.filter((c: any) => 
-          prods.some((p: any) => p.category_id === c.id)
-        ).sort((a: any, b: any) => a.sort_order - b.sort_order);
-        
-        if (activeCats.length > 0) return activeCats;
-      }
-
-      // Supabase Fallback
-      const { data } = await supabase
-        .from("categories")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("sort_order");
-      return data ?? [];
+      const res = await fetch("/api/catalog");
+      if (!res.ok) return [];
+      const data = (await res.json()) as { id: string; name: string }[];
+      return data.map((c) => ({ id: c.id, name: c.name }));
     },
   });
 

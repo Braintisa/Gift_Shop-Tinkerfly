@@ -4,11 +4,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Token cannot live in this file in git (GitHub push protection). Use env or .deploy-token on the server.
+# Token cannot be committed in this repo (GitHub push protection). On the VPS set one of:
+#   export GITHUB_TOKEN=ghp_...
+#   .env.deploy in this directory: GITHUB_TOKEN=ghp_...
+#   .deploy-token: single line, the PAT only
+if [[ -z "${GITHUB_TOKEN:-}" && -f "${SCRIPT_DIR}/.env.deploy" ]]; then
+	set -a
+	# shellcheck disable=SC1091
+	source "${SCRIPT_DIR}/.env.deploy"
+	set +a
+fi
 if [[ -z "${GITHUB_TOKEN:-}" && -f "${SCRIPT_DIR}/.deploy-token" ]]; then
 	GITHUB_TOKEN="$(tr -d ' \n\r' < "${SCRIPT_DIR}/.deploy-token")"
 fi
-: "${GITHUB_TOKEN:?Set GITHUB_TOKEN or add .deploy-token (one line)}"
+: "${GITHUB_TOKEN:?Set GITHUB_TOKEN (env), or .env.deploy, or .deploy-token on the VPS}"
 REPO_HTTPS="https://${GITHUB_TOKEN}@github.com/Braintisa/Gift_Shop-Tinkerfly.git"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 

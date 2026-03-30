@@ -7,21 +7,72 @@ export const FACEBOOK_URL = "https://www.facebook.com/share/1ZmfzmjiVG/";
 export const INSTAGRAM_URL = "https://www.instagram.com/tinkerfly_?igsh=MTlxejA5MGtldmZ4Nw==";
 export const TIKTOK_URL = "https://www.tiktok.com/@tinkerfly__?_r=1&_t=ZS-948RviYPT4H";
 
-export const getWhatsAppOrderLink = (productName: string, price: number, categoryName?: string, productUrl?: string) => {
+/** Public site origin, no trailing slash. Matches `NEXT_PUBLIC_SITE_URL` when set (see `layout.tsx`). */
+export const SITE_URL =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_SITE_URL
+    ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")
+    : "https://tinkerfly.lk";
+
+/**
+ * Build an absolute HTTPS URL for a path, full URL, or Next/static image `src` (for WhatsApp text).
+ * Note: `wa.me?text=` cannot attach image files; including a public image URL lets the customer open the photo.
+ */
+export function resolvePublicAssetUrl(href: unknown): string | undefined {
+  if (href == null) return undefined;
+  if (typeof href === "string") {
+    const s = href.trim();
+    if (!s) return undefined;
+    // Full URLs (e.g. imgbb https://i.ibb.co/...) are used as-is for WhatsApp text.
+    if (/^https?:\/\//i.test(s)) return s;
+    if (s.startsWith("//")) return `https:${s}`;
+    const path = s.startsWith("/") ? s : `/${s}`;
+    return `${SITE_URL}${path}`;
+  }
+  if (typeof href === "object" && href !== null && "src" in href && typeof (href as { src: unknown }).src === "string") {
+    return resolvePublicAssetUrl((href as { src: string }).src);
+  }
+  return undefined;
+}
+
+/** Build image lines for WhatsApp (wa.me only supports text; links open the hosted photo, e.g. imgbb). */
+function formatWhatsAppImageLines(imageUrls: string[] | undefined): string {
+  if (!imageUrls?.length) return "";
+  const unique = [...new Set(imageUrls.filter(Boolean))].slice(0, 8);
+  if (unique.length === 0) return "";
+  return (
+    "\n" +
+    unique.map((url, i) => (i === 0 ? `Product Image: ${url}` : `Image ${i + 1}: ${url}`)).join("\n")
+  );
+}
+
+export const getWhatsAppOrderLink = (
+  productName: string,
+  price: number,
+  categoryName?: string,
+  productUrl?: string,
+  imageUrls?: string[],
+) => {
   const message = `Hello, I want to order this bouquet:
 
 Product: ${productName}
-Price: Rs. ${price.toLocaleString()}${categoryName ? `\nCategory: ${categoryName}` : ""}${productUrl ? `\nProduct Link: ${productUrl}` : ""}
+Price: Rs. ${price.toLocaleString()}${categoryName ? `\nCategory: ${categoryName}` : ""}${productUrl ? `\nProduct Link: ${productUrl}` : ""}${formatWhatsAppImageLines(imageUrls)}
 
 Please share availability and payment details.`;
   return `https://wa.me/94722507196?text=${encodeURIComponent(message)}`;
 };
 
-export const getWhatsAppOrderLinkWithNumber = (whatsappNumber: string, productName: string, price: number, categoryName?: string, productUrl?: string) => {
+export const getWhatsAppOrderLinkWithNumber = (
+  whatsappNumber: string,
+  productName: string,
+  price: number,
+  categoryName?: string,
+  productUrl?: string,
+  imageUrls?: string[],
+) => {
   const message = `Hello, I want to order this bouquet:
 
 Product: ${productName}
-Price: Rs. ${price.toLocaleString()}${categoryName ? `\nCategory: ${categoryName}` : ""}${productUrl ? `\nProduct Link: ${productUrl}` : ""}
+Price: Rs. ${price.toLocaleString()}${categoryName ? `\nCategory: ${categoryName}` : ""}${productUrl ? `\nProduct Link: ${productUrl}` : ""}${formatWhatsAppImageLines(imageUrls)}
 
 Please share availability and payment details.`;
   return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
@@ -91,6 +142,18 @@ export const SAMPLE_CATEGORIES: Category[] = [
       { id: "fb2", name: "Sunflower Delight", price: 4000, description: "Bright sunflower arrangement with greenery", image: bouquetFlowers },
       { id: "fb3", name: "Lavender Dreams", price: 4800, description: "Purple and lilac tones in soft wrapping", badge: "Premium", image: bouquetFlowers },
       { id: "fb4", name: "Pastel Paradise", price: 4300, description: "Soft pastel tones in elegant presentation", image: bouquetFlowers },
+    ],
+  },
+  {
+    id: "butterfly",
+    name: "Butterfly Bouquets",
+    emoji: "",
+    description: "Whimsical butterfly-themed arrangements for a magical touch",
+    products: [
+      { id: "bf1", name: "Monarch Dream Bouquet", price: 4800, description: "Butterfly accents with mixed blooms in soft tones", badge: "Most Popular", image: bouquetFlowers },
+      { id: "bf2", name: "Flutter Rose Bouquet", price: 5200, description: "Roses with delicate butterfly details and satin ribbon", badge: "Premium", image: bouquetRoses },
+      { id: "bf3", name: "Garden Butterfly Mix", price: 4500, description: "Colorful garden flowers with butterfly picks", image: bouquetFlowers },
+      { id: "bf4", name: "Pastel Wings Bouquet", price: 4900, description: "Pastel palette with butterfly styling", image: bouquetPremiumRoses },
     ],
   },
   {

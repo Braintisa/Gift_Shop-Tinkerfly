@@ -49,9 +49,12 @@ const PopularSlider = ({ products, whatsappNumber }: PopularSliderProps) => {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className="hidden sm:flex -left-4 md:-left-6 h-10 w-10 border-border/50 bg-card/90 backdrop-blur-sm hover:bg-card shadow-md" />
-            <CarouselNext className="hidden sm:flex -right-4 md:-right-6 h-10 w-10 border-border/50 bg-card/90 backdrop-blur-sm hover:bg-card shadow-md" />
+            <CarouselPrevious className="flex left-2 sm:-left-4 md:-left-6 h-9 w-9 sm:h-10 sm:w-10 border-border/50 bg-card/90 backdrop-blur-sm hover:bg-card shadow-md" />
+            <CarouselNext className="flex right-2 sm:-right-4 md:-right-6 h-9 w-9 sm:h-10 sm:w-10 border-border/50 bg-card/90 backdrop-blur-sm hover:bg-card shadow-md" />
           </Carousel>
+          <p className="sm:hidden mt-4 text-center text-xs text-muted-foreground">
+            Swipe left or right, or tap arrows to see more products.
+          </p>
         </motion.div>
       </div>
     </section>

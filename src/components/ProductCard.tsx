@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
-import { getWhatsAppOrderLink, getWhatsAppOrderLinkWithNumber, type Product } from "@/lib/constants";
+import {
+  getWhatsAppOrderLink,
+  getWhatsAppOrderLinkWithNumber,
+  resolvePublicAssetUrl,
+  SITE_URL,
+  type Product,
+} from "@/lib/constants";
 import heroBouquet from "@/assets/hero-bouquet.jpg";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -29,13 +35,6 @@ const ProductCard = ({ product, index, whatsappNumber }: ProductCardProps) => {
     if (!modalOpen) setIsZoomed(false);
   }, [modalOpen]);
 
-  // Use a stable relative URL to avoid SSR/client hydration mismatches.
-  const productUrl = `/?product=${product.id}`;
-
-  const orderLink = whatsappNumber
-    ? getWhatsAppOrderLinkWithNumber(whatsappNumber, product.name, product.price, product.categoryName, productUrl)
-    : getWhatsAppOrderLink(product.name, product.price, product.categoryName, productUrl);
-
   // Ensure images is always an array of valid strings
   const rawImages = (product.images && product.images.length > 0)
     ? product.images
@@ -45,6 +44,30 @@ const ProductCard = ({ product, index, whatsappNumber }: ProductCardProps) => {
   const images = rawImages.filter(img => typeof img === 'string' && img.trim() !== "").length > 0
     ? rawImages.filter(img => typeof img === 'string' && img.trim() !== "")
     : [heroBouquet];
+
+  /** Same URLs as on the card (e.g. imgbb https://i.ibb.co/...); passed into WhatsApp pre-filled text. */
+  const whatsappImageUrls: string[] = (() => {
+    const fromStrings = rawImages
+      .filter((img): img is string => typeof img === "string" && img.trim() !== "")
+      .map((s) => resolvePublicAssetUrl(s))
+      .filter((u): u is string => Boolean(u));
+    if (fromStrings.length > 0) return fromStrings;
+    const fallback = resolvePublicAssetUrl(images[0]);
+    return fallback ? [fallback] : [];
+  })();
+
+  const productUrl = `${SITE_URL}/?product=${encodeURIComponent(product.id)}`;
+
+  const orderLink = whatsappNumber
+    ? getWhatsAppOrderLinkWithNumber(
+        whatsappNumber,
+        product.name,
+        product.price,
+        product.categoryName,
+        productUrl,
+        whatsappImageUrls,
+      )
+    : getWhatsAppOrderLink(product.name, product.price, product.categoryName, productUrl, whatsappImageUrls);
 
   return (
     <>
