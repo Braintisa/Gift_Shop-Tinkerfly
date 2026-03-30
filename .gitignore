@@ -25,5 +25,4 @@ dist-ssr
 
 /src/generated/prisma
 
-# Deploy script PAT (never commit)
 .deploy-token
