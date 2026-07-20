@@ -3,14 +3,13 @@ NODE_ENV = 'production'
 PORT = '3006'
 
 [phases.setup]
-nixPkgs = ['nodejs_20']
+nixPkgs = ['nodejs_20', 'npm']
 
 [phases.install]
-cmds = ['npm install']
+cmds = ['npm ci --include=dev']
 
 [phases.build]
 cmds = ['npm run build']
 
 [start]
 cmd = 'npm run start -- -p 3006 -H 0.0.0.0'
-
